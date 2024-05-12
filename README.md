@@ -1,4 +1,4 @@
-# FreeKniight
+# FreeKnights
 
 Simple game.
 
