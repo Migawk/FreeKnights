@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FreeKnights</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <div class="menu" id="menu">
+      <form id="form">
+        <h3>FreeKnights<sub>v0.1</sub></h3>
+        <input class="name" name="name" type="text" placeholder="Name" />
+        <input class="button" type="submit" value="Start game" />
+      </form>
+    </div>
+    <img src="./script/archer.png" id="archer" hidden />
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+    </script>
+    <script src="./script/utils.js"></script>
+    <script src="./script/keys.js"></script>
+    <script src="./script/bullet.js"></script>
+    <script src="./script/player.js"></script>
+    <script src="./script/location.js"></script>
+    <script src="./script/main.js"></script>
+  </body>
+</html>
