@@ -2,7 +2,7 @@ import express from "express";
 import { createServer } from "node:http";
 import { join } from "node:path";
 import { Server } from "socket.io";
-import { readFileSync, writeFile, writeFileSync } from "node:fs";
+import Player from "./player.js";
 
 const app = express();
 const server = createServer(app);
@@ -19,7 +19,13 @@ app.get("/:path", [handle], () => {});
 app.get("/*/:path", [handle], () => {});
 
 let users = [];
-let locations = [];
+let locations = {};
+
+locations.tovern = [
+  new Player(60, 60, "npc", 14, 13, 1, "Ove"),
+  new Player(60, 120, "npc", 14, 13, 1, "Bjorn"),
+];
+locations.valley = [];
 
 io.on("connection", (socket) => {
   let statePlayer = {};
@@ -38,48 +44,9 @@ io.on("connection", (socket) => {
 
     socket.join("tovern");
     io.to("tovern").emit("newUser", statePlayer);
-    // socket.broadcast.emit("commit", { event: "newUser", payload: userData });
   });
 
   socket.on("commit", (commit) => {
-    if (commit.event === "changeLocation") {
-      if (commit.payload.name in locations === false) {
-        locations[commit.payload.name] = [statePlayer];
-      } else {
-        const list = locations[commit.payload.name];
-        locations[commit.payload.name] = [...list, statePlayer];
-      }
-      const rooms = socket.rooms;
-
-      rooms.forEach((room) => {
-        socket.leave(room);
-        socket
-          .to(room)
-          .emit("commit", { event: "leaveUser", payload: statePlayer });
-
-        if (!locations[room]) locations[room] = [];
-        const list = Array.from(new Set(locations[room].filter((e) => e.name != statePlayer.name)));
-
-        locations[room] = list;
-      });
-
-      io.to(commit.payload.name).emit("commit", {
-        event: "newUser",
-        payload: statePlayer,
-      });
-
-      const userList = [...locations[commit.payload.name]].filter(
-        (u) => u.name != statePlayer.name
-      );
-      socket.emit("commit", {
-        event: "userList",
-        payload: userList,
-      });
-
-      socket.join(commit.payload.name);
-
-      return;
-    }
     socket.broadcast.emit("commit", {
       event: commit.event,
       payload: commit.payload,
@@ -94,6 +61,47 @@ io.on("connection", (socket) => {
         statePlayer = commit.payload;
 
         break;
+      }
+      case "changeLocation": {
+        if (!commit.payload.name) return;
+        if (commit.payload.name in locations === false) {
+          locations[commit.payload.name] = [statePlayer];
+        } else {
+          const list = locations[commit.payload.name];
+          locations[commit.payload.name] = [...list, statePlayer];
+        }
+        const rooms = socket.rooms;
+
+        rooms.forEach((room) => {
+          socket.leave(room);
+          socket
+            .to(room)
+            .emit("commit", { event: "leaveUser", payload: statePlayer });
+
+          if (!locations[room]) locations[room] = [];
+          const list = Array.from(
+            new Set(locations[room].filter((e) => e.name != statePlayer.name))
+          );
+
+          locations[room] = list;
+        });
+
+        io.to(commit.payload.name).emit("commit", {
+          event: "newUser",
+          payload: statePlayer,
+        });
+
+        const userList = [...locations[commit.payload.name]].filter(
+          (u) => u.name != statePlayer.name
+        );
+        socket.emit("commit", {
+          event: "userList",
+          payload: userList,
+        });
+
+        socket.join(commit.payload.name);
+
+        return;
       }
     }
   });

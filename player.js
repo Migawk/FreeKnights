@@ -1,12 +1,12 @@
-const archer = document.getElementById("archer");
+function wacky_round(number, places = 2) {
+  var multiplier = Math.pow(10, places + 2);
+  var fixed = Math.floor(number * multiplier);
+  fixed += 44;
+  fixed = Math.floor(fixed / 100);
+  return fixed / Math.pow(10, places);
+}
 
-/**
- * @method
- * @name  move
- * @param {number} x
- * @param {number} y
- */
-class Player {
+export default class Player {
   /**
    *
    * @param {number} x

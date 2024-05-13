@@ -193,14 +193,10 @@ function start(name) {
 
   socket.emit("commit", {
     event: "changeLocation",
-    payload: "tovern",
+    payload: {name: "tovern"},
   });
 
   socket.on("commit", (commit) => {
-    // if (game.players.findIndex((user) => user.name == hero.name)) {
-    //   socket.disconnect();
-    //   return;
-    // }
 
     switch (commit.event) {
       case "newUser": {
