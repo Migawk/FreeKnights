@@ -4,7 +4,7 @@
 * [x] Locations
 * * [ ] Objects
 * * [ ] Doors
-* [ ] Infobox
+* [x] Infobox
 * [ ] Inventory
-* [ ] NPC
-* * [ ] NPC with dialogues
+* [x] NPC
+* * [x] NPC with dialogues

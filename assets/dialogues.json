@@ -1,0 +1,17 @@
+{
+    "ove": [
+        {
+            "text": "..."
+        }
+    ],
+    "bjorn": [
+        {
+            "text": "Hi, how are you?",
+            "tree": [
+                {
+                    "text": "Did you want anything? I can't help you.."
+                }
+            ]
+        }
+    ]
+}

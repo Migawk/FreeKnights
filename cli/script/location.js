@@ -3,6 +3,7 @@ locations.set("tovern", {
   name: "tovern",
   floor: "./assets/tovern.png",
   borderColor: "#914f33",
+  objects: [],
 });
 locations.set("valley", {
   name: "valley",
@@ -15,6 +16,7 @@ class Location {
     this.currentLocation = locations.get("tovern");
     this.img = new Image();
     this.img.src = this.currentLocation.floor;
+    this.objects = [];
   }
   change(name) {
     const newLocation = locations.get(name);
@@ -38,5 +40,8 @@ class Location {
   }
   update() {
     this.draw();
+    this.objects.forEach((obj) => {
+      obj.update();
+    });
   }
 }

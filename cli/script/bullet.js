@@ -10,6 +10,7 @@ class Bullet {
     this.y = y1;
     this.x2 = x2;
     this.y2 = y2;
+    this.hitbox = 1;
 
     this.speed = speed;
     this.angle = Math.atan2(y2 - y1, x2 - x1);

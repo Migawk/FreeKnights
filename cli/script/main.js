@@ -49,7 +49,8 @@ if (form) {
 }
 
 class Game {
-  players = [];
+  message = null;
+
   constructor(players, locationEntity) {
     this.players = players;
     this.location = locationEntity;
@@ -63,31 +64,23 @@ class Game {
 
     this.location.update();
 
-    ctx.fillStyle = "#3c1003ee";
-    ctx.font = "bold 24px Arial";
-
-    const locationName =
-      this.location.currentLocation.name.slice(0, 1).toUpperCase() +
-      this.location.currentLocation.name.slice(1);
-    const { width: nameWidth } = ctx.measureText(locationName);
-    ctx.fillText(locationName, canvas.width - nameWidth - 8, canvas.height - 8);
-
-    let arrows = [];
     this.players.forEach((player) => {
       player.update();
-      arrows.push(player.arrows);
-      arrows = arrows.flat(1);
     });
-    arrows.forEach((arrow) => {
-      this.players.forEach((player) => {
+    this.players[0].arrows.forEach((arrow) => {
+      this.players.slice(1).forEach((player) => {
         const col = collision(arrow, player);
         if (col.isTouch) {
-          if (player.arrows.includes(arrow)) return;
-          this.players = this.players.filter((player1) => player1 != player);
-          if (arrow.shooter.arrows)
-            arrow.shooter.arrows = arrow.shooter.arrows.filter(
-              (arr) => arr != arrow
-            );
+          this.players[0].arrows = this.players[0].arrows.filter(
+            (arrow1) => arrow != arrow1
+          );
+          socket.emit("commit", {
+            event: "hit",
+            payload: {
+              arrow,
+              player,
+            },
+          });
         }
       });
     });
@@ -104,71 +97,117 @@ class Game {
       ctx.fill();
     }
 
+    ctx.fillStyle = "#3c1003ee";
+    ctx.font = "bold 24px Arial";
+
+    const locationName =
+      this.location.currentLocation.name.slice(0, 1).toUpperCase() +
+      this.location.currentLocation.name.slice(1);
+    const { width: nameWidth } = ctx.measureText(locationName);
+    ctx.fillText(locationName, canvas.width - nameWidth - 8, 8 + 16);
+    if (this.message) {
+      ctx.fillRect(4, 400 - 60 - 4, 600 - 8, 60);
+      ctx.fillStyle = "#ccccccee";
+      ctx.font = "bold 16px Arial";
+      ctx.fillText(this.message.text, 16, 400 - 60 + 20);
+    }
     ctx.restore();
+    this.players.forEach((player, ind) => {
+      if (ind === 0) return;
+      // collision(this.players[0], player);
+    });
+    this.location.objects.forEach((obj) => {
+      collision(this.players[0], obj);
+    });
   }
 }
 
+start("Migawka"); // uses only for tests
 function start(name) {
   document.body.append(canvas);
 
-  const hero = new Player(
-    canvas.width / 2,
-    canvas.height / 2,
-    "hero",
-    14,
-    13,
-    1,
-    name
-  );
+  const hero = new Player(80, 140, "hero", 14, 13, 0.7, name);
   const locationEntity = new Location();
   const game = new Game([hero], locationEntity, hero);
-  const actions = new CommitActions(game);
+  const actions = new CommitActions(game, hero);
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const messageStatus = document.getElementById("message");
+    if (hero.isBusy) return;
+    switch (e.key) {
+      case "Enter": {
+        const messageStatus = document.getElementById("message");
 
-      if (messageStatus) {
-        const content = messageStatus.value;
+        if (messageStatus) {
+          const content = messageStatus.value;
 
-        messageStatus.remove();
-        socket.emit("commit", {
-          event: "newMessage",
-          payload: { author: hero.name, content },
-        });
-
-        hero.addMessage(content);
-        setTimeout(() => {
-          hero.removeMessage(content);
-
+          messageStatus.remove();
           socket.emit("commit", {
-            event: "delMessage",
+            event: "newMessage",
             payload: { author: hero.name, content },
           });
-        }, 5000);
 
-        return;
+          hero.addMessage(content);
+          setTimeout(() => {
+            hero.removeMessage(content);
+
+            socket.emit("commit", {
+              event: "delMessage",
+              payload: { author: hero.name, content },
+            });
+          }, 5000);
+
+          return;
+        }
+
+        const message = document.createElement("input");
+        message.placeholder = "Message";
+        message.id = "message";
+        message.max = 5;
+
+        document.body.appendChild(message);
+
+        message.focus();
+        break;
       }
+      case "l": {
+        if (locationEntity.currentLocation.name === "valley") {
+          locationEntity.change("tovern");
+        } else locationEntity.change("valley");
+        break;
+      }
+      case "e": {
+        let closestPlayer;
 
-      const message = document.createElement("input");
-      message.placeholder = "Message";
-      message.id = "message";
-      message.max = 5;
-
-      document.body.appendChild(message);
-
-      message.focus();
-    }
-    if (e.key === "l") {
-      if (locationEntity.currentLocation.name === "valley") {
-        locationEntity.change("tovern");
-      } else locationEntity.change("valley");
+        game.players.forEach((player) => {
+          if (player.name === hero.name) return;
+          const dist = distance(hero.x, hero.y, player.x, player.y);
+          if (!closestPlayer) closestPlayer = { player, dist };
+          if (dist < closestPlayer.dist) closestPlayer = { player, dist };
+        });
+        if (closestPlayer.dist < 50 && closestPlayer.player.dialog) {
+          actions.displayDialog(closestPlayer.player.dialog);
+          hero.isBusy = true;
+        }
+      }
     }
   });
   socket.timeout(5000).emit("acquaint", hero, (err, res) => {
     if (err) return;
 
-    const { userList } = res;
+    const { userList, objects } = res;
+    locationEntity.objects = objects.map(
+      (obj) =>
+        new LocationObject(
+          obj.x,
+          obj.y,
+          obj.width,
+          obj.height,
+          obj.img,
+          obj.interaction,
+          obj.sliceX,
+          obj.sliceY
+        )
+    );
 
     if (Array.isArray(userList)) {
       const newList = [];
@@ -193,11 +232,10 @@ function start(name) {
 
   socket.emit("commit", {
     event: "changeLocation",
-    payload: {name: "tovern"},
+    payload: { name: "tovern" },
   });
 
   socket.on("commit", (commit) => {
-
     switch (commit.event) {
       case "newUser": {
         actions.newUser(commit.payload);
@@ -229,6 +267,11 @@ function start(name) {
       }
       case "userList": {
         actions.userList(commit.payload);
+        break;
+      }
+      case "hit": {
+        const { arrow, player } = commit.payload;
+        actions.hit(arrow, player);
         break;
       }
       default:

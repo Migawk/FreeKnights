@@ -16,27 +16,38 @@ class Player {
    * @param {number} height
    * @param {number} friction
    */
-  constructor(x, y, control, width = 14, height = 13, friction = 1, name) {
+  constructor(
+    x,
+    y,
+    control,
+    width = 14,
+    height = 13,
+    friction = 0.9,
+    name,
+    dialog = null
+  ) {
     this.name = name;
+    this.isBusy = false;
 
     this.x = x;
     this.y = y;
     this.width = width;
     this.height = height;
     this.control = control;
-    this.stamina = 100;
-    this.hitbox = 10;
+    this.stamina = 0;
+    this.hitbox = 2;
 
-    this.speed = 0;
+    this.vx = 0;
+    this.vy = 0;
     this.acceleration = 0;
-    this.angleDirection = 0;
     this.friction = friction;
     this.limit = 5;
-    this.isRight = Math.abs(wacky_round(this.angleDirection) - Math.PI);
+    this.isRight = false;
     this.aiming = false;
 
     this.arrows = [];
     this.messages = [];
+    if (control == "npc" && dialog) this.dialog = dialog;
   }
   draw() {
     ctx.save();
@@ -44,7 +55,7 @@ class Player {
     ctx.font = "bold 12px Arial";
     const { width: nameWidth } = ctx.measureText(this.name);
     ctx.fillText(this.name, -nameWidth / 2, -16);
-    ctx.scale(this.isRight < 2 ? -2 : 2, 2);
+    ctx.scale(this.isRight ? -2 : 2, 2);
 
     ctx.drawImage(
       archer,
@@ -60,26 +71,44 @@ class Player {
     ctx.restore();
 
     /**  MESSAGE **/
-    if (this.messages.length == 0) return;
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.font = "16px Arial";
+    if (this.messages.length != 0) {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.font = "16px Arial";
 
-    [...this.messages].reverse().forEach((msg, ind) => {
-      const { width: contentWidth } = ctx.measureText(msg);
-      const basicGap = 24;
+      [...this.messages].reverse().forEach((msg, ind) => {
+        const { width: contentWidth } = ctx.measureText(msg);
+        const basicGap = 24;
 
-      ctx.fillStyle = "#ccc";
-      ctx.fillRect(
-        -contentWidth / 2 - 3,
-        -basicGap - basicGap * (ind + 1),
-        contentWidth + 6,
-        24
-      );
-      ctx.fillStyle = "#111";
-      ctx.fillText(msg, -contentWidth / 2, -basicGap * (ind + 1) - 6);
-    });
-    ctx.restore();
+        ctx.fillStyle = "#ccc";
+        ctx.fillRect(
+          -contentWidth / 2 - 3,
+          -basicGap - basicGap * (ind + 1),
+          contentWidth + 6,
+          24
+        );
+        ctx.fillStyle = "#111";
+        ctx.fillText(msg, -contentWidth / 2, -basicGap * (ind + 1) - 6);
+      });
+      ctx.restore();
+    }
+
+    /** Panel **/
+    if (this.control === "hero" && !this.isBusy) {
+      ctx.fillStyle = "#3c1003bb";
+      ctx.save();
+      ctx.translate(0, 400);
+      ctx.fillRect(4, -54, 150, 50);
+      ctx.translate(4, -54);
+      const stamina =
+        this.stamina > 125 ? 125 : this.stamina < 0 ? 0 : this.stamina;
+
+      ctx.fillStyle = "#0a7326bb";
+      ctx.fillRect(4, 4, 10, 20);
+      ctx.fillStyle = "#260a73bb";
+      ctx.fillRect(4, 26, stamina, 20);
+      ctx.restore();
+    }
   }
   update() {
     this.arrows.forEach((arrow) => {
@@ -90,7 +119,6 @@ class Player {
     } else {
       this.aiming = false;
     }
-    this.isRight = Math.abs(wacky_round(this.angleDirection) - Math.PI);
     this.draw();
     this.move();
     if (keys.includes("aim") && keys.includes("shoot")) {
@@ -107,8 +135,6 @@ class Player {
     }
     if (this.control != "hero") return;
 
-    this.angleDirection %= Math.PI * 2;
-
     if (this.acceleration != 0) {
       if (this.acceleration < 0) {
         this.acceleration += this.friction;
@@ -116,48 +142,56 @@ class Player {
         this.acceleration -= this.friction;
       }
     }
-    if (this.speed != 0) {
-      if (this.speed < 0) {
-        this.speed += this.friction;
-      } else {
-        this.speed -= this.friction;
+    if (this.vx != 0 || this.vy != 0) {
+      this.vx *= this.friction;
+      this.vy *= this.friction;
+      this.acceleration *= this.friction;
+    }
+    if (Math.abs(this.vx) >= this.limit) {
+      if (this.vx < 0) this.vx = -this.limit;
+      else this.vx = this.limit;
+    }
+    if (Math.abs(this.vy) >= this.limit) {
+      if (this.vy < 0) this.vy = -this.limit;
+      else this.vy = this.limit;
+    }
+
+    if (Math.round(this.vx.toFixed(2)) == 0) this.vx = 0;
+    if (Math.round(this.vy.toFixed(2)) == 0) this.vy = 0;
+    if (Math.round(this.acceleration.toFixed(3)) == 0) this.acceleration = 0;
+
+    if (!this.isBusy) {
+      if (keys.includes("up")) {
+        this.vy -= 2 * (this.aiming ? 0.33 : 1);
+        this.vy -= this.acceleration;
       }
-      if (Math.round(this.speed.toFixed(1)) == 0) this.speed = 0;
-    }
-    if (Math.abs(this.speed) > this.limit) {
-      this.speed < 0 ? (this.speed = -this.limit) : (this.speed = this.limit);
+      if (keys.includes("down")) {
+        this.vy += 2 * (this.aiming ? 0.33 : 1);
+        this.vy += this.acceleration;
+      }
+      if (keys.includes("left")) {
+        this.isRight = true;
+        this.vx -= 2 * (this.aiming ? 0.33 : 1);
+        this.vx -= this.acceleration;
+      }
+      if (keys.includes("right")) {
+        this.isRight = false;
+        this.vx += 2 * (this.aiming ? 0.33 : 1);
+        this.vx += this.acceleration;
+      }
     }
 
-    if (
-      keys.includes("up") ||
-      keys.includes("left") ||
-      keys.includes("down") ||
-      keys.includes("right")
-    )
-      this.speed += 2 * (this.aiming ? 0.33 : 1);
-    if (keys.includes("shift") && keys.length > 1 && this.stamina > 10) {
+    this.stamina < 200 ? (this.stamina += 1) : null;
+    if (keys.includes("shift") && keys.length > 1 && this.stamina > 0) {
       this.stamina -= 5;
-      this.acceleration += 1;
-    } else {
-      this.stamina < 200 ? (this.stamina += 1) : null;
+      this.acceleration += 1; // FIX IT
+    }
+    if (this.stamina < 1) {
+      keys.removeKey("shift");
     }
 
-    if (keys.includes("right")) {
-      this.angleDirection = 0;
-    }
-    if (keys.includes("left")) {
-      this.angleDirection = Math.PI;
-    }
-    if (keys.includes("up")) {
-      this.angleDirection = (3 * Math.PI) / 2;
-    }
-    if (keys.includes("down")) {
-      this.angleDirection = Math.PI / 2;
-    }
-    this.speed += this.acceleration;
-
-    this.x += this.speed * Math.cos(this.angleDirection);
-    this.y += this.speed * Math.sin(this.angleDirection);
+    this.x += this.vx;
+    this.y += this.vy;
 
     if (this.x < this.width) this.x = this.width;
     if (this.y < 0) this.y = 0;
@@ -165,7 +199,7 @@ class Player {
     if (this.x > canvas.width - this.width) this.x = canvas.width - this.width;
     if (this.y > canvas.height - this.height)
       this.y = canvas.height - this.height;
-    if (this.speed || this.acceleration) {
+    if (this.vx || this.vy || this.acceleration) {
       socket.emit("commit", { event: "movement", payload: this });
     }
   }

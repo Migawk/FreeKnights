@@ -1,4 +1,5 @@
 const padding = 4;
+
 function wacky_round(number, places = 2) {
   var multiplier = Math.pow(10, places + 2); // get two extra digits
   var fixed = Math.floor(number * multiplier); // convert to integer
@@ -20,24 +21,54 @@ function collision(object1, object2) {
     yBottom: false,
     isTouch: false,
   };
-  const touch = distance(object1.x, object1.y, object2.x, object2.y) < 30;
+  // points
+  const objDist = distance(object1.x, object1.y, object2.x, object2.y);
+  const touch = true; //objDist < 30;
 
-  if (touch && object2.hitbox + object2.x + object2.width >= object1.x)
+  const obj1Points = {
+    x1: object1.x - object1.hitbox,
+    x2: object1.x + object1.width + object1.hitbox,
+    y1: object1.y - object1.hitbox,
+    y2: object1.y + object1.width + object1.hitbox,
+  };
+  const obj2Points = {
+    x1: object2.x - object2.hitbox,
+    x2: object2.x + object2.width + object2.hitbox,
+    y1: object2.y - object2.hitbox,
+    y2: object2.y + object2.height + object2.hitbox,
+  };
+  if (touch && obj1Points.x1 < obj2Points.x2 && obj1Points.x1 > obj2Points.x1)
     collision.xLeft = true;
-  if (touch && object1.hitbox + object1.x + object1.width >= object2.x)
+  if (touch && obj1Points.x2 > obj2Points.x1 && obj1Points.x2 < obj2Points.x2)
     collision.xRight = true;
-  if (touch && object2.hitbox + object2.y + object2.height >= object1.y)
+  if (touch && obj1Points.y1 < obj2Points.y2 && obj1Points.y1 > obj2Points.y1)
     collision.yTop = true;
-  if (touch && object1.hitbox + object1.y + object1.height >= object2.y)
+  if (touch && obj1Points.y2 > obj2Points.y1 && obj1Points.y2 < obj2Points.y2)
     collision.yBottom = true;
 
   if (
-    collision.xLeft ||
-    collision.xRight ||
-    collision.yTop ||
-    collision.yBottom
+    (collision.xLeft && (collision.yTop || collision.yBottom)) ||
+    (collision.xRight && (collision.yTop || collision.yBottom)) ||
+    (collision.yTop && (collision.xLeft || collision.xRight)) ||
+    (collision.yBottom && (collision.xLeft || collision.xRight))
   )
     collision.isTouch = true;
+
+  const strength = 3;
+  if (collision.isTouch) {
+    if (collision.xLeft) {
+      object1.vx += strength;
+    }
+    if (collision.xRight) {
+      object1.vx -= strength;
+    }
+    if (collision.yTop) {
+      object1.vy += strength;
+    }
+    if (collision.yBottom) {
+      object1.vy -= strength;
+    }
+  }
 
   return collision;
 }
@@ -50,9 +81,33 @@ function radToDegree(rad) {
   return (rad * 180) / Math.PI;
 }
 
+function generateUID() {
+  // Creates a random 4-character string
+  function S4() {
+    return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+  }
+
+  // Returns a concatenated string of four random strings
+  return (
+    S4() +
+    S4() +
+    "-" +
+    S4() +
+    "-" +
+    S4() +
+    "-" +
+    S4() +
+    "-" +
+    S4() +
+    S4() +
+    S4()
+  );
+}
+
 class CommitActions {
-  constructor(gameEntity) {
+  constructor(gameEntity, hero) {
     this.gameEntity = gameEntity;
+    this.heroEntity = hero;
   }
   newUser(user) {
     const newUser = new Player(
@@ -62,7 +117,8 @@ class CommitActions {
       undefined,
       undefined,
       undefined,
-      user.name
+      user.name,
+      user.dialog
     );
     const newList = this.gameEntity.players;
     newList.push(newUser);
@@ -116,32 +172,38 @@ class CommitActions {
         p.width,
         p.height,
         p.friction,
-        p.name
+        p.name,
+        p.dialog
       );
     });
-    console.log(updatedList);
     this.gameEntity.players = [this.gameEntity.players[0], ...updatedList];
   }
-}
-function generateUID() {
-  // Creates a random 4-character string
-  function S4() {
-    return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+  displayDialog(dialog) {
+    this.gameEntity.message = { text: dialog[0].text, rest: dialog[0] };
+    const listener = (e) => {
+      if (e.key === "Enter") {
+        if (!this.gameEntity.message.rest.tree) {
+          this.gameEntity.message = null;
+          this.heroEntity.isBusy = false;
+          document.removeEventListener("keydown", listener);
+          return;
+        }
+        this.gameEntity.message = {
+          text: this.gameEntity.message.rest.tree[0].text,
+          rest: this.gameEntity.message.rest.tree[0],
+        };
+      }
+    };
+    document.addEventListener("keydown", listener);
   }
+  hit(arrow, player) {
+    if (this.gameEntity.players[0].name === player.name) {
+      socket.disconnect();
+      return;
+    }
 
-  // Returns a concatenated string of four random strings
-  return (
-    S4() +
-    S4() +
-    "-" +
-    S4() +
-    "-" +
-    S4() +
-    "-" +
-    S4() +
-    "-" +
-    S4() +
-    S4() +
-    S4()
-  );
+    this.gameEntity.players = this.gameEntity.players.filter(
+      (player1) => player1.name != player.name
+    );
+  }
 }
