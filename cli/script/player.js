@@ -1,6 +1,4 @@
-import keys from "./keys.js";
-import { ctx, pointer } from "../script/main.js";
-import Bullet from "./bullet.js";
+const archer = document.getElementById("archer");
 
 /**
  * @method
@@ -8,7 +6,7 @@ import Bullet from "./bullet.js";
  * @param {number} x
  * @param {number} y
  */
-export default class Player {
+class Player {
   /**
    *
    * @param {number} x
@@ -17,9 +15,6 @@ export default class Player {
    * @param {number} width
    * @param {number} height
    * @param {number} friction
-   * @param {string} name
-   * @param {array} dialog
-   * @param {"archer" | "knight" | "wizard" | "rogue"} character
    */
   constructor(
     x,
@@ -29,9 +24,7 @@ export default class Player {
     height = 13,
     friction = 0.9,
     name,
-    dialog = null,
-    character,
-    inventory = []
+    dialog = null
   ) {
     this.name = name;
     this.isBusy = false;
@@ -51,17 +44,9 @@ export default class Player {
     this.limit = 5;
     this.isRight = false;
     this.aiming = false;
-    this.character = character;
 
     this.arrows = [];
     this.messages = [];
-    this.inventory = inventory;
-    this.selectedItem = [];
-    this.abilities = [];
-
-    this.img = new Image();
-    this.img.src = "./assets/archer.png";
-
     if (control == "npc" && dialog) this.dialog = dialog;
   }
   draw() {
@@ -73,7 +58,7 @@ export default class Player {
     ctx.scale(this.isRight ? -2 : 2, 2);
 
     ctx.drawImage(
-      this.img,
+      archer,
       0,
       0,
       this.width,
@@ -107,18 +92,40 @@ export default class Player {
       });
       ctx.restore();
     }
+
+    /** Panel **/
+    if (this.control === "hero" && !this.isBusy) {
+      ctx.fillStyle = "#3c1003bb";
+      ctx.save();
+      ctx.translate(0, 400);
+      ctx.fillRect(4, -54, 150, 50);
+      ctx.translate(4, -54);
+      const stamina =
+        this.stamina > 125 ? 125 : this.stamina < 0 ? 0 : this.stamina;
+
+      ctx.fillStyle = "#0a7326bb";
+      ctx.fillRect(4, 4, 10, 20);
+      ctx.fillStyle = "#260a73bb";
+      ctx.fillRect(4, 26, stamina, 20);
+      ctx.restore();
+    }
   }
   update() {
     this.arrows.forEach((arrow) => {
       arrow.update();
     });
-    if (keys.has("aim")) {
+    if (keys.includes("aim")) {
       this.aiming = true;
     } else {
       this.aiming = false;
     }
     this.draw();
     this.move();
+    if (keys.includes("aim") && keys.includes("shoot")) {
+      keys.removeKey("shoot");
+      const arrow = this.shoot(pointer);
+      socket.emit("commit", { event: "newBullet", payload: arrow });
+    }
   }
   move(x, y) {
     if (x && y) {
@@ -154,20 +161,20 @@ export default class Player {
     if (Math.round(this.acceleration.toFixed(3)) == 0) this.acceleration = 0;
 
     if (!this.isBusy) {
-      if (keys.has("up")) {
+      if (keys.includes("up")) {
         this.vy -= 2 * (this.aiming ? 0.33 : 1);
         this.vy -= this.acceleration;
       }
-      if (keys.has("down")) {
+      if (keys.includes("down")) {
         this.vy += 2 * (this.aiming ? 0.33 : 1);
         this.vy += this.acceleration;
       }
-      if (keys.has("left")) {
+      if (keys.includes("left")) {
         this.isRight = true;
         this.vx -= 2 * (this.aiming ? 0.33 : 1);
         this.vx -= this.acceleration;
       }
-      if (keys.has("right")) {
+      if (keys.includes("right")) {
         this.isRight = false;
         this.vx += 2 * (this.aiming ? 0.33 : 1);
         this.vx += this.acceleration;
@@ -175,13 +182,12 @@ export default class Player {
     }
 
     this.stamina < 200 ? (this.stamina += 1) : null;
-
-    if (keys.has("shift") && keys.size > 1 && this.stamina > 0) {
+    if (keys.includes("shift") && keys.length > 1 && this.stamina > 0) {
       this.stamina -= 5;
       this.acceleration += 1; // FIX IT
     }
     if (this.stamina < 1) {
-      keys.delete("shift");
+      keys.removeKey("shift");
     }
 
     this.x += this.vx;
@@ -197,37 +203,23 @@ export default class Player {
       socket.emit("commit", { event: "movement", payload: this });
     }
   }
-  attack = {
-    shoot: (pointer, id) => {
-      const arrow = new Bullet(
-        this.name,
-        this.x,
-        this.y,
-        pointer.x,
-        pointer.y,
-        id
-      );
-      this.arrows.push(arrow);
+  shoot(pointer, id) {
+    const arrow = new Bullet(
+      this.name,
+      this.x,
+      this.y,
+      pointer.x,
+      pointer.y,
+      id
+    );
+    this.arrows.push(arrow);
 
-      setTimeout(() => {
-        this.arrows = this.arrows.filter((lArrow) => lArrow.name != arrow);
-        socket.emit("commit", { event: "leaveBullet", payload: arrow });
-      }, 1000);
-      return arrow;
-    },
-    melee: (pointer) => {
-      socket.emit("commit", {
-        event: "melee",
-        payload: {
-          weapon: this.selectedItem,
-          coords: {
-            x: pointer.x,
-            y: pointer.y,
-          },
-        },
-      });
-    },
-  };
+    setTimeout(() => {
+      this.arrows = this.arrows.filter((lArrow) => lArrow.name != arrow);
+      socket.emit("commit", { event: "leaveBullet", payload: arrow });
+    }, 1000);
+    return arrow;
+  }
   addMessage(content) {
     this.messages.push(content);
   }
