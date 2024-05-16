@@ -55,3 +55,18 @@ body {
   transform: translate(-50%, -50%);
   padding: 12px;
 }
+
+.characterList {
+  display: flex;
+  gap: 4px;
+}
+.character + p {
+  padding: 4px;
+  border-radius: 2px;
+  user-select: none;
+  cursor: pointer;
+}
+.character:checked + p {
+  color: #3c1003;
+  background-color: #efa810;
+}

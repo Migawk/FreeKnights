@@ -1,6 +1,9 @@
-const padding = 4;
+import Player from "./player.js";
+import LocationObject from "./object.js";
 
-function wacky_round(number, places = 2) {
+export const padding = 4;
+
+export function wacky_round(number, places = 2) {
   var multiplier = Math.pow(10, places + 2); // get two extra digits
   var fixed = Math.floor(number * multiplier); // convert to integer
   fixed += 44; // round down on anything less than x.xxx56
@@ -13,7 +16,7 @@ function wacky_round(number, places = 2) {
  * @param {Player} object1
  * @param {Player} object2
  */
-function collision(object1, object2) {
+export function collision(object1, object2) {
   const collision = {
     xLeft: false,
     xRight: false,
@@ -72,15 +75,15 @@ function collision(object1, object2) {
   return collision;
 }
 
-function distance(x1, y1, x2, y2) {
+export function distance(x1, y1, x2, y2) {
   return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
-function radToDegree(rad) {
+export function radToDegree(rad) {
   return (rad * 180) / Math.PI;
 }
 
-function generateUID() {
+export function generateUID() {
   // Creates a random 4-character string
   function S4() {
     return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
@@ -103,7 +106,7 @@ function generateUID() {
   );
 }
 
-class CommitActions {
+export class CommitActions {
   constructor(gameEntity, hero) {
     this.gameEntity = gameEntity;
     this.heroEntity = hero;
@@ -140,7 +143,7 @@ class CommitActions {
     const shooter = this.gameEntity.players.find(
       (player) => player.name == bullet.shooter
     );
-    shooter.shoot({ x: bullet.x2, y: bullet.y2 }, bullet.id);
+    shooter.attack.shoot({ x: bullet.x2, y: bullet.y2 }, bullet.id);
   }
   leaveBullet(bullet) {
     const shooter = this.gameEntity.players.find(
@@ -207,7 +210,7 @@ class CommitActions {
   }
   changeLocation(players, objects) {
     this.userList(players);
-    console.log(objects);
+    
     this.gameEntity.location.objects = objects.map(
       (obj) =>
         new LocationObject(

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FreeKnights</title>
+    <link rel="stylesheet" type="text/css" href="style.css" />
+  </head>
+  <body>
+    <div class="menu" id="menu">
+      <form id="form">
+        <h3>FreeKnights<sub>v0.1</sub></h3>
+        <input class="name" name="name" type="text" placeholder="Name" />
+        <div class="characterList">
+          <label
+            ><input
+              hidden
+              class="character"
+              type="radio"
+              name="character"
+              value="archer"
+              checked
+            />
+            <p>Archer</p></label
+          >
+          <label
+            ><input
+              hidden
+              class="character"
+              type="radio"
+              name="character"
+              value="knight"
+            />
+            <p>Knight</p></label
+          >
+          <label
+            ><input
+              hidden
+              class="character"
+              type="radio"
+              name="character"
+              value="wizard"
+            />
+            <p>Wizard</p></label
+          >
+          <label
+            ><input
+              hidden
+              class="character"
+              type="radio"
+              name="character"
+              value="rogue"
+            />
+            <p>Rogue</p></label
+          >
+        </div>
+        <input class="button" type="submit" value="Start game" />
+      </form>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      const socket = io();
+    </script>
+    <script src="./engine/events.js" type="module"></script>
+    <script src="./script/main.js" type="module"></script>
+  </body>
+</html>

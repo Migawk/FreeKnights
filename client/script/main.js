@@ -1,13 +1,29 @@
+import keys from "../engine/keys.js";
+import Player from "../engine/player.js";
+import Location from "../engine/location.js";
+import {
+  CommitActions,
+  collision,
+  distance,
+  padding,
+} from "../engine/utils.js";
+import LocationObject from "../engine/object.js";
+
 const form = document.getElementById("form");
 const canvas = document.createElement("canvas");
 canvas.width = 600;
 canvas.height = 400;
 canvas.id = "canvas";
-const ctx = canvas.getContext("2d");
+
+const interaction = new Image();
+interaction.src = "../assets/interaction.png";
+interaction.height = 20;
+
+export const ctx = canvas.getContext("2d");
 const crosshair = new Image();
 crosshair.src = "./assets/crosshair.png";
 const { x: canvasX, y: canvasY } = canvas.getBoundingClientRect();
-const pointer = {
+export const pointer = {
   x: 0,
   y: 0,
 };
@@ -17,18 +33,18 @@ canvas.addEventListener("click", () => {
 });
 canvas.addEventListener("mousedown", (e) => {
   if (e.button == 0) {
-    keys.push("shoot");
+    keys.add("shoot");
   }
   if (e.button == 2) {
-    keys.push("aim");
+    keys.add("aim");
   }
 });
 canvas.addEventListener("mouseup", (e) => {
   if (e.button == 0) {
-    keys.removeKey("shoot");
+    keys.delete("shoot");
   }
   if (e.button == 2) {
-    keys.removeKey("aim");
+    keys.delete("aim");
   }
 });
 canvas.addEventListener("mousemove", (e) => {
@@ -44,7 +60,12 @@ canvas.addEventListener("mousemove", (e) => {
 if (form) {
   form.addEventListener("submit", (e) => {
     e.preventDefault();
-    start(form.name.value);
+    let selected;
+    form.character.forEach((e) => {
+      if (e.checked) selected = e.value;
+    });
+
+    start(form.name.value, selected);
   });
 }
 
@@ -59,6 +80,7 @@ class Game {
     this.players = players;
   }
   update() {
+    const player = this.players[0];
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -67,7 +89,7 @@ class Game {
     this.players.forEach((player) => {
       player.update();
     });
-    this.players[0].arrows.forEach((arrow) => {
+    player.arrows.forEach((arrow) => {
       this.players.slice(1).forEach((player) => {
         const col = collision(arrow, player);
         if (col.isTouch) {
@@ -85,13 +107,13 @@ class Game {
       });
     });
 
-    if (keys.includes("aim")) {
+    if (keys.has("aim")) {
       ctx.drawImage(crosshair, pointer.x + 16, pointer.y + 16);
 
       ctx.strokeStyle = "red";
       ctx.strokeWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(this.players[0].x, this.players[0].y);
+      ctx.moveTo(player.x, player.y);
       ctx.lineTo(pointer.x + crosshair.width, pointer.y + crosshair.width);
       ctx.stroke();
       ctx.fill();
@@ -111,22 +133,123 @@ class Game {
       ctx.font = "bold 16px Arial";
       ctx.fillText(this.message.text, 16, 400 - 60 + 20);
     }
-    ctx.restore();
-    this.players.forEach((player, ind) => {
+
+    ctx.fillStyle = "#3c1003bb";
+
+    if (!player.isBusy) {
+      // When the player is duscussing something.
+      const length = 140;
+
+      /** Panel **/
+      ctx.save();
+      ctx.translate(0, 400);
+      ctx.fillRect(4, -54, 150, 50);
+      ctx.translate(4, -54);
+      const stamina =
+        player.stamina > length
+          ? length
+          : player.stamina < 0
+          ? 0
+          : player.stamina;
+
+      ctx.fillStyle = "#0a7326bb";
+      ctx.fillRect(4, 4, 10, 20);
+      ctx.fillStyle = "#260a73bb";
+      ctx.fillRect(4, 26, stamina, 20);
+      ctx.restore();
+
+      /** Inventory **/
+      ctx.save();
+      ctx.translate(0, canvas.height - 30);
+      ctx.translate(padding + 150 + padding, 0);
+      for (let i = 0; i <= player.inventory.length; i++) {
+        ctx.fillRect(4, 0 - padding, 30, 30);
+        ctx.translate(30 + padding, 0);
+      }
+      ctx.restore();
+
+      /** Abilities */
+      ctx.save();
+      ctx.translate(canvas.width - 40, canvas.height - 40);
+      for (let i = 0; i <= player.abilities.length; i++) {
+        ctx.fillRect(-4, 0 - padding, 40, 40);
+        ctx.translate(-40 - padding, 0);
+      }
+      ctx.restore();
+    }
+
+    let objectUnderCloud = { obj: null, dist: null };
+    this.players.forEach((player1, ind) => {
       if (ind === 0) return;
-      collision(this.players[0], player);
+      collision(this.players[0], player1);
+      if (!player.isBusy) {
+        const dist = distance(player.x, player.y, player1.x, player1.y);
+        if (dist < 30) {
+          if (objectUnderCloud.obj) {
+            if (dist < objectUnderCloud.dist) {
+              objectUnderCloud = { obj: player1, dist };
+            }
+          } else {
+            objectUnderCloud = { obj: player1, dist };
+          }
+        }
+      }
     });
     this.location.objects.forEach((obj) => {
-      collision(this.players[0], obj);
+      collision(player, obj);
+      if (!player.isBusy) {
+        const dist = distance(player.x, player.y, obj.x, obj.y);
+        if (dist < 30) {
+          if (objectUnderCloud.obj) {
+            if (dist < objectUnderCloud.dist) {
+              objectUnderCloud = { obj, dist };
+            }
+          } else objectUnderCloud = { obj, dist };
+        }
+      }
     });
+    if (objectUnderCloud.obj) {
+      ctx.save();
+      const x = objectUnderCloud.obj.x + objectUnderCloud.obj.width / 2;
+      const y = objectUnderCloud.obj.y - objectUnderCloud.obj.height / 2;
+      ctx.translate(x, y);
+      ctx.scale(.5,.5)
+      ctx.arc(-4, -34, 20, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.drawImage(interaction, -16, -48);
+      ctx.restore();
+    }
+
+    if (keys.has("aim") && keys.has("shoot")) {
+      keys.delete("shoot");
+      const arrow = player.attack.shoot(pointer);
+      socket.emit("commit", { event: "newBullet", payload: arrow });
+    }
   }
 }
 
-start("Migawka"); // uses only for tests
-function start(name) {
+start("Migawka", "archer"); // uses only for tests
+/**
+ *
+ * @param {string} name
+ * @param {"archer" | "knight" | "wizard" | "rogue"} character
+ */
+function start(name, character) {
   document.body.append(canvas);
 
-  const hero = new Player(80, 140, "hero", 14, 13, 0.7, name);
+  const hero = new Player(
+    80,
+    140,
+    "hero",
+    14,
+    13,
+    0.7,
+    name,
+    undefined,
+    character,
+    [1, 2, 3, 4]
+  );
+  console.log(hero);
   const locationEntity = new Location();
   const game = new Game([hero], locationEntity, hero);
   const actions = new CommitActions(game, hero);
@@ -141,20 +264,21 @@ function start(name) {
           const content = messageStatus.value;
 
           messageStatus.remove();
-          socket.emit("commit", {
-            event: "newMessage",
-            payload: { author: hero.name, content },
-          });
-
-          hero.addMessage(content);
-          setTimeout(() => {
-            hero.removeMessage(content);
-
+          if (content.length > 0) {
             socket.emit("commit", {
-              event: "delMessage",
+              event: "newMessage",
               payload: { author: hero.name, content },
             });
-          }, 5000);
+
+            setTimeout(() => {
+              hero.removeMessage(content);
+
+              socket.emit("commit", {
+                event: "delMessage",
+                payload: { author: hero.name, content },
+              });
+            }, 5000);
+          }
 
           return;
         }
@@ -179,12 +303,14 @@ function start(name) {
         let selectedObj;
         let closestPlayer;
 
-        for (let i = 0; i <= 0; i++) {
-          const obj = game.location.objects[0];
-          const { isTouch } = collision(hero, obj);
-          if (!selectedObj && isTouch) {
-            selectedObj = obj;
-            break;
+        if (game.location.objects.length > 0) {
+          for (let i = 0; i <= 0; i++) {
+            const obj = game.location.objects[0];
+            const { isTouch } = collision(hero, obj);
+            if (!selectedObj && isTouch) {
+              selectedObj = obj;
+              break;
+            }
           }
         }
 
@@ -204,7 +330,11 @@ function start(name) {
           if (!closestPlayer) closestPlayer = { player, dist };
           if (dist < closestPlayer.dist) closestPlayer = { player, dist };
         });
-        if (closestPlayer.dist < 50 && closestPlayer.player.dialog) {
+        if (
+          closestPlayer &&
+          closestPlayer.dist < 50 &&
+          closestPlayer.player.dialog
+        ) {
           actions.displayDialog(closestPlayer.player.dialog);
           hero.isBusy = true;
         }

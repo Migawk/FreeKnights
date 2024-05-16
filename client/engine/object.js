@@ -1,4 +1,6 @@
-class LocationObject {
+import { ctx } from "../script/main.js";
+
+export default class LocationObject {
   /**
    *
    * @param {Number} x

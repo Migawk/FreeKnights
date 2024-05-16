@@ -8,13 +8,11 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server);
 
-app.get("/", (req, res) => {
-  res.sendFile(join(process.env.PWD, "cli", "index.html"));
-});
 const handle = (req, res, next) => {
-  res.sendFile(join(process.env.PWD, "cli", req.path));
+  res.sendFile(join(process.env.PWD, "../client", req.path));
   next();
 };
+app.get("/", [handle], () => {});
 app.get("/:path", [handle], () => {});
 app.get("/*/:path", [handle], () => {});
 
