@@ -114,7 +114,7 @@ class Game {
     ctx.restore();
     this.players.forEach((player, ind) => {
       if (ind === 0) return;
-      // collision(this.players[0], player);
+      collision(this.players[0], player);
     });
     this.location.objects.forEach((obj) => {
       collision(this.players[0], obj);
@@ -176,7 +176,27 @@ function start(name) {
         break;
       }
       case "e": {
+        let selectedObj;
         let closestPlayer;
+
+        for (let i = 0; i <= 0; i++) {
+          const obj = game.location.objects[0];
+          const { isTouch } = collision(hero, obj);
+          if (!selectedObj && isTouch) {
+            selectedObj = obj;
+            break;
+          }
+        }
+
+        if (selectedObj) {
+          const [type, value] = selectedObj.interaction;
+          switch (type) {
+            case "changeLocation": {
+              locationEntity.change(value);
+            }
+          }
+          return;
+        }
 
         game.players.forEach((player) => {
           if (player.name === hero.name) return;
@@ -273,6 +293,11 @@ function start(name) {
         const { arrow, player } = commit.payload;
         actions.hit(arrow, player);
         break;
+      }
+      case "changeLocation": {
+        const { players, objects } = commit.payload;
+        actions.changeLocation(players, objects);
+        return;
       }
       default:
         break;

@@ -22,7 +22,6 @@ function collision(object1, object2) {
     isTouch: false,
   };
   // points
-  const objDist = distance(object1.x, object1.y, object2.x, object2.y);
   const touch = true; //objDist < 30;
 
   const obj1Points = {
@@ -204,6 +203,21 @@ class CommitActions {
 
     this.gameEntity.players = this.gameEntity.players.filter(
       (player1) => player1.name != player.name
+    );
+  }
+  changeLocation(players, objects) {
+    this.userList(players);
+    console.log(objects);
+    this.gameEntity.location.objects = objects.map(
+      (obj) =>
+        new LocationObject(
+          obj.x,
+          obj.y,
+          obj.width,
+          obj.height,
+          obj.img,
+          obj.interaction
+        )
     );
   }
 }

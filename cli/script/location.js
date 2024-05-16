@@ -21,6 +21,7 @@ class Location {
   change(name) {
     const newLocation = locations.get(name);
     if (!location) return;
+
     this.currentLocation = newLocation;
     this.img.src = newLocation.floor;
 

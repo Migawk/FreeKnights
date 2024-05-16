@@ -6,7 +6,7 @@ export default class LocationObject {
    * @param {Number} width
    * @param {Number} height
    * @param {String} img
-   * @param {function():void} interaction
+   * @param {Array} interaction
    */
   constructor(x, y, width, height, img, interaction) {
     this.x = x;

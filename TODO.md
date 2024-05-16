@@ -2,8 +2,8 @@
 * [x] Chat
 * [x] Dead message
 * [x] Locations
-* * [ ] Objects
-* * [ ] Doors
+* * [x] Objects
+* * [x] Doors
 * [x] Infobox
 * [ ] Inventory
 * [x] NPC

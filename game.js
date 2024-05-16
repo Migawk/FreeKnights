@@ -18,7 +18,14 @@ export default function game(io) {
     tovern: {
       players: users.slice(0, 2),
       objects: [
-        new LocationObject(200, 200, 120, 38, "./assets/table.png", () => {}),
+        new LocationObject(
+          200,
+          200,
+          120,
+          38,
+          "./assets/table.png",
+          ["changeLocation", "valley"]
+        ),
       ],
     },
     valley: {
@@ -129,8 +136,11 @@ export default function game(io) {
             (u) => u.name != statePlayer.name
           );
           socket.emit("commit", {
-            event: "userList",
-            payload: userList,
+            event: "changeLocation",
+            payload: {
+              players: userList,
+              objects: locations[commit.payload.name].objects,
+            },
           });
 
           socket.join(commit.payload.name);
