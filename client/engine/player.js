@@ -1,4 +1,6 @@
-const archer = document.getElementById("archer");
+import keys from "./keys.js";
+import { ctx, pointer } from "../script/main.js";
+import Bullet from "./bullet.js";
 
 /**
  * @method
@@ -6,7 +8,7 @@ const archer = document.getElementById("archer");
  * @param {number} x
  * @param {number} y
  */
-class Player {
+export default class Player {
   /**
    *
    * @param {number} x
@@ -15,6 +17,9 @@ class Player {
    * @param {number} width
    * @param {number} height
    * @param {number} friction
+   * @param {string} name
+   * @param {array} dialog
+   * @param {"archer" | "knight" | "wizard" | "rogue"} character
    */
   constructor(
     x,
@@ -24,7 +29,9 @@ class Player {
     height = 13,
     friction = 0.9,
     name,
-    dialog = null
+    dialog = null,
+    character,
+    inventory = []
   ) {
     this.name = name;
     this.isBusy = false;
@@ -44,9 +51,17 @@ class Player {
     this.limit = 5;
     this.isRight = false;
     this.aiming = false;
+    this.character = character;
 
     this.arrows = [];
     this.messages = [];
+    this.inventory = inventory;
+    this.selectedItem = [];
+    this.abilities = [];
+
+    this.img = new Image();
+    this.img.src = "./assets/archer.png";
+
     if (control == "npc" && dialog) this.dialog = dialog;
   }
   draw() {
@@ -58,7 +73,7 @@ class Player {
     ctx.scale(this.isRight ? -2 : 2, 2);
 
     ctx.drawImage(
-      archer,
+      this.img,
       0,
       0,
       this.width,
@@ -92,40 +107,18 @@ class Player {
       });
       ctx.restore();
     }
-
-    /** Panel **/
-    if (this.control === "hero" && !this.isBusy) {
-      ctx.fillStyle = "#3c1003bb";
-      ctx.save();
-      ctx.translate(0, 400);
-      ctx.fillRect(4, -54, 150, 50);
-      ctx.translate(4, -54);
-      const stamina =
-        this.stamina > 125 ? 125 : this.stamina < 0 ? 0 : this.stamina;
-
-      ctx.fillStyle = "#0a7326bb";
-      ctx.fillRect(4, 4, 10, 20);
-      ctx.fillStyle = "#260a73bb";
-      ctx.fillRect(4, 26, stamina, 20);
-      ctx.restore();
-    }
   }
   update() {
     this.arrows.forEach((arrow) => {
       arrow.update();
     });
-    if (keys.includes("aim")) {
+    if (keys.has("aim")) {
       this.aiming = true;
     } else {
       this.aiming = false;
     }
     this.draw();
     this.move();
-    if (keys.includes("aim") && keys.includes("shoot")) {
-      keys.removeKey("shoot");
-      const arrow = this.shoot(pointer);
-      socket.emit("commit", { event: "newBullet", payload: arrow });
-    }
   }
   move(x, y) {
     if (x && y) {
@@ -161,20 +154,20 @@ class Player {
     if (Math.round(this.acceleration.toFixed(3)) == 0) this.acceleration = 0;
 
     if (!this.isBusy) {
-      if (keys.includes("up")) {
+      if (keys.has("up")) {
         this.vy -= 2 * (this.aiming ? 0.33 : 1);
         this.vy -= this.acceleration;
       }
-      if (keys.includes("down")) {
+      if (keys.has("down")) {
         this.vy += 2 * (this.aiming ? 0.33 : 1);
         this.vy += this.acceleration;
       }
-      if (keys.includes("left")) {
+      if (keys.has("left")) {
         this.isRight = true;
         this.vx -= 2 * (this.aiming ? 0.33 : 1);
         this.vx -= this.acceleration;
       }
-      if (keys.includes("right")) {
+      if (keys.has("right")) {
         this.isRight = false;
         this.vx += 2 * (this.aiming ? 0.33 : 1);
         this.vx += this.acceleration;
@@ -182,12 +175,13 @@ class Player {
     }
 
     this.stamina < 200 ? (this.stamina += 1) : null;
-    if (keys.includes("shift") && keys.length > 1 && this.stamina > 0) {
+
+    if (keys.has("shift") && keys.size > 1 && this.stamina > 0) {
       this.stamina -= 5;
       this.acceleration += 1; // FIX IT
     }
     if (this.stamina < 1) {
-      keys.removeKey("shift");
+      keys.delete("shift");
     }
 
     this.x += this.vx;
@@ -203,23 +197,37 @@ class Player {
       socket.emit("commit", { event: "movement", payload: this });
     }
   }
-  shoot(pointer, id) {
-    const arrow = new Bullet(
-      this.name,
-      this.x,
-      this.y,
-      pointer.x,
-      pointer.y,
-      id
-    );
-    this.arrows.push(arrow);
+  attack = {
+    shoot: (pointer, id) => {
+      const arrow = new Bullet(
+        this.name,
+        this.x,
+        this.y,
+        pointer.x,
+        pointer.y,
+        id
+      );
+      this.arrows.push(arrow);
 
-    setTimeout(() => {
-      this.arrows = this.arrows.filter((lArrow) => lArrow.name != arrow);
-      socket.emit("commit", { event: "leaveBullet", payload: arrow });
-    }, 1000);
-    return arrow;
-  }
+      setTimeout(() => {
+        this.arrows = this.arrows.filter((lArrow) => lArrow.name != arrow);
+        socket.emit("commit", { event: "leaveBullet", payload: arrow });
+      }, 1000);
+      return arrow;
+    },
+    melee: (pointer) => {
+      socket.emit("commit", {
+        event: "melee",
+        payload: {
+          weapon: this.selectedItem,
+          coords: {
+            x: pointer.x,
+            y: pointer.y,
+          },
+        },
+      });
+    },
+  };
   addMessage(content) {
     this.messages.push(content);
   }

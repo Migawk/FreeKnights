@@ -1,7 +1,10 @@
+import { generateUID } from "./utils.js";
+import { ctx } from "../script/main.js";
+
 const arrow = new Image();
 arrow.src = "./assets/arrow.png";
 
-class Bullet {
+export default class Bullet {
   constructor(shooter, x1, y1, x2, y2, id, speed = 20) {
     this.id = id || generateUID();
     this.shooter = shooter;

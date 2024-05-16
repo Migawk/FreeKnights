@@ -1,4 +1,6 @@
-const locations = new Map();
+import { ctx } from "../script/main.js";
+
+export const locations = new Map();
 locations.set("tovern", {
   name: "tovern",
   floor: "./assets/tovern.png",
@@ -11,7 +13,7 @@ locations.set("valley", {
   borderColor: "#4dcd00",
 });
 
-class Location {
+export default class Location {
   constructor() {
     this.currentLocation = locations.get("tovern");
     this.img = new Image();
