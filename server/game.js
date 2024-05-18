@@ -3,6 +3,7 @@ import Player from "./assets/player.js";
 import LocationObject from "./assets/object.js";
 import { readFileSync } from "fs";
 import { judge } from "./assets/utils.js";
+import Item from "./assets/item.js";
 
 export default function game(io) {
   const dialoguesJSON = JSON.parse(
@@ -18,14 +19,14 @@ export default function game(io) {
     tovern: {
       players: users.slice(0, 2),
       objects: [
-        new LocationObject(
-          200,
-          200,
-          120,
-          38,
-          "./assets/table.png",
-          ["changeLocation", "valley"]
-        ),
+        new LocationObject(200, 200, 120, 38, "./assets/table.png", [
+          "changeLocation",
+          "valley",
+        ]),
+        new LocationObject(200, 50, 10, 10, "./assets/poison.png", [
+          "item",
+          new Item("Heal", 1, 2, "poison.png", "heal"),
+        ]),
       ],
     },
     valley: {

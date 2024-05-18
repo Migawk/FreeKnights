@@ -31,6 +31,7 @@ export default class Player {
     name,
     dialog = null,
     character,
+    hp,
     inventory = []
   ) {
     this.name = name;
@@ -41,6 +42,7 @@ export default class Player {
     this.width = width;
     this.height = height;
     this.control = control;
+    this.hp = hp;
     this.stamina = 0;
     this.hitbox = 2;
 
@@ -56,7 +58,11 @@ export default class Player {
     this.arrows = [];
     this.messages = [];
     this.inventory = inventory;
-    this.selectedItem = [];
+    if (this.inventory.length) {
+      this.selectedItem = 0;
+    } else {
+      this.selectedItem = null;
+    }
     this.abilities = [];
 
     this.img = new Image();

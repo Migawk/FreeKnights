@@ -15,9 +15,16 @@ canvas.width = 600;
 canvas.height = 400;
 canvas.id = "canvas";
 
-const interaction = new Image();
+const interaction = new Image(20, 20);
 interaction.src = "../assets/interaction.png";
-interaction.height = 20;
+
+const poison = new Image();
+poison.src = "../assets/poison1.png";
+
+const imgs = {
+  "interaction.png": interaction,
+  "poison.png": poison,
+};
 
 export const ctx = canvas.getContext("2d");
 const crosshair = new Image();
@@ -143,8 +150,9 @@ class Game {
       /** Panel **/
       ctx.save();
       ctx.translate(0, 400);
-      ctx.fillRect(4, -54, 150, 50);
-      ctx.translate(4, -54);
+      ctx.fillRect(padding, -54, 150, 50);
+      ctx.translate(padding, -54);
+      const hp = player.hp > length ? length : player.hp < 0 ? 0 : player.hp;
       const stamina =
         player.stamina > length
           ? length
@@ -153,18 +161,37 @@ class Game {
           : player.stamina;
 
       ctx.fillStyle = "#0a7326bb";
-      ctx.fillRect(4, 4, 10, 20);
+      ctx.fillRect(padding, padding, hp, 20);
       ctx.fillStyle = "#260a73bb";
-      ctx.fillRect(4, 26, stamina, 20);
+      ctx.fillRect(padding, 26, stamina, 20);
       ctx.restore();
 
       /** Inventory **/
       ctx.save();
       ctx.translate(0, canvas.height - 30);
       ctx.translate(padding + 150 + padding, 0);
-      for (let i = 0; i <= player.inventory.length; i++) {
-        ctx.fillRect(4, 0 - padding, 30, 30);
-        ctx.translate(30 + padding, 0);
+      if (player.inventory.length > 0) {
+        if (!player.inventory.selectedItem) player.inventory.selectedItem = 0;
+
+        for (let i = 0; i <= player.inventory.length; i++) {
+          if (player.inventory[i]) {
+            if (player.inventory.selectedItem === i) {
+              ctx.fillStyle = "#263c03bb";
+            } else {
+              ctx.fillStyle = "#3c1003bb";
+            }
+            ctx.fillRect(padding, 0 - padding, 30, 30);
+
+            ctx.drawImage(
+              imgs[player.inventory[i].img],
+              padding * 3,
+              padding,
+              32 - padding * 4,
+              32 - padding * 4
+            );
+            ctx.translate(30 + padding, 0);
+          }
+        }
       }
       ctx.restore();
 
@@ -172,7 +199,7 @@ class Game {
       ctx.save();
       ctx.translate(canvas.width - 40, canvas.height - 40);
       for (let i = 0; i <= player.abilities.length; i++) {
-        ctx.fillRect(-4, 0 - padding, 40, 40);
+        ctx.fillRect(-padding, 0 - padding, 40, 40);
         ctx.translate(-40 - padding, 0);
       }
       ctx.restore();
@@ -213,9 +240,11 @@ class Game {
       const x = objectUnderCloud.obj.x + objectUnderCloud.obj.width / 2;
       const y = objectUnderCloud.obj.y - objectUnderCloud.obj.height / 2;
       ctx.translate(x, y);
-      ctx.scale(.5,.5)
+      ctx.scale(0.5, 0.5);
+      ctx.beginPath();
       ctx.arc(-4, -34, 20, 0, 2 * Math.PI);
       ctx.fill();
+      ctx.stroke();
       ctx.drawImage(interaction, -16, -48);
       ctx.restore();
     }
@@ -238,8 +267,8 @@ function start(name, character) {
   document.body.append(canvas);
 
   const hero = new Player(
-    80,
-    140,
+    200,
+    50,
     "hero",
     14,
     13,
@@ -247,9 +276,9 @@ function start(name, character) {
     name,
     undefined,
     character,
-    [1, 2, 3, 4]
+    10,
+    []
   );
-  console.log(hero);
   const locationEntity = new Location();
   const game = new Game([hero], locationEntity, hero);
   const actions = new CommitActions(game, hero);
@@ -304,10 +333,13 @@ function start(name, character) {
         let closestPlayer;
 
         if (game.location.objects.length > 0) {
-          for (let i = 0; i <= 0; i++) {
-            const obj = game.location.objects[0];
+          for (let i = 0; i <= game.location.objects.length; i++) {
+            const obj = game.location.objects[i];
+
             const { isTouch } = collision(hero, obj);
-            if (!selectedObj && isTouch) {
+            const dist = distance(hero.x, hero.y, obj.x, obj.y);
+
+            if (!selectedObj && (isTouch || dist < 30)) {
               selectedObj = obj;
               break;
             }
@@ -319,6 +351,11 @@ function start(name, character) {
           switch (type) {
             case "changeLocation": {
               locationEntity.change(value);
+              break;
+            }
+            case "item": {
+              hero.inventory.push(value);
+              break;
             }
           }
           return;
