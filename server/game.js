@@ -1,9 +1,10 @@
 import _ from "lodash";
-import Player from "./assets/player.js";
-import LocationObject from "./assets/object.js";
+import Player from "./engine/player.js";
+import LocationObject from "./engine/object.js";
 import { readFileSync } from "fs";
-import { judge } from "./assets/utils.js";
-import Item from "./assets/item.js";
+import { generateName, judge } from "./engine/utils.js";
+import Item from "./engine/item.js";
+import { spawnObjectAfterDead } from "./engine/helpers.js";
 
 export default function game(io) {
   const dialoguesJSON = JSON.parse(
@@ -19,9 +20,15 @@ export default function game(io) {
     tovern: {
       players: users.slice(0, 2),
       objects: [
-        new LocationObject(200, 200, 120, 38, "./assets/table.png", [
+        new LocationObject(600 - 32 - 4, 200, 32, 48, "./assets/door.png", [
           "changeLocation",
-          "valley",
+          {
+            location: "valley",
+            coords: {
+              x: 4,
+              y: 200,
+            },
+          },
         ]),
         new LocationObject(200, 50, 10, 10, "./assets/poison.png", [
           "item",
@@ -31,11 +38,42 @@ export default function game(io) {
     },
     valley: {
       players: [],
-      objects: [],
+      objects: [
+        new LocationObject(4, 200, 32, 48, "./assets/door.png", [
+          "changeLocation",
+          {
+            location: "tovern",
+            coords: {
+              x: 600 - 32 - 4,
+              y: 200,
+            },
+          },
+        ]),
+      ],
     },
   };
 
+  function generateNPC(socket) {
+    const res = _.find(locations.valley.players, { control: "hero" });
+    if (res && locations.valley.players.length < 5) {
+      const npc = new Player(
+        Math.random() * 600,
+        Math.random() * 400,
+        "npc",
+        undefined,
+        undefined,
+        undefined,
+        generateName(),
+        null
+      );
+      locations.valley.players.push(npc);
+      socket.to("valley").emit("commit", { event: "newUser", payload: npc });
+    }
+  }
+
   io.on("connection", (socket) => {
+    setInterval(() => generateNPC(socket), 1000);
+
     let statePlayer = {};
     socket.on("acquaint", (userData, callback) => {
       if (users.findIndex((user) => user.name == userData.name) !== -1) {
@@ -46,40 +84,43 @@ export default function game(io) {
         });
       }
 
-      callback({ userList: users, objects: locations.tovern.objects });
+      const initLocation = "valley";
+
+      callback({
+        userList: locations.tovern.players,
+        objects: locations.tovern.objects,
+        location: initLocation,
+      });
       statePlayer = userData;
       users.push(userData);
 
-      socket.join("tovern");
-      io.to("tovern").emit("newUser", statePlayer);
+      socket.join(initLocation);
+      io.to(initLocation).emit("newUser", statePlayer);
+      statePlayer.location = initLocation;
     });
 
     socket.on("commit", (commit) => {
+      const location = locations[statePlayer.location];
       switch (commit.event) {
         case "hit": {
           const { arrow, player } = commit.payload;
 
           if (judge(arrow, player)) {
-            Object.entries(locations).forEach((location) => {
-              const res = {
-                locationName: location[0],
-                playerIndex: _.findKey(location[1].players, [
-                  "name",
-                  player.name,
-                ]),
-              };
-              if (!res.playerIndex) return;
+            const res = {
+              locationName: statePlayer.location,
+              playerIndex: _.findKey(location.players, ["name", player.name]),
+            };
+            if (!res.playerIndex) return;
 
-              const newList = locations[location[0]].players.filter(
-                (player1) =>
-                  player1.name != location[1].players[res.playerIndex].name
-              );
-              locations[location[0]].players = newList;
-              socket.broadcast.emit("commit", {
-                event: commit.event,
-                payload: commit.payload,
-              });
-            });
+            const newList = location.players.filter(
+              (player1) =>
+                player1.name != location.players[res.playerIndex].name
+            );
+            if (player.control == "npc") {
+              const newObj = spawnObjectAfterDead(player);
+              if (newObj) location.objects.push(newObj);
+            }
+            location.players = newList;
           }
           break;
         }
@@ -89,7 +130,7 @@ export default function game(io) {
           );
           if (userInd === -1) return;
           users[userInd] = commit.payload;
-          statePlayer = commit.payload;
+          statePlayer = { ...commit.payload, location: statePlayer.location };
 
           break;
         }
@@ -128,6 +169,7 @@ export default function game(io) {
             locations[room].players = list;
           });
 
+          statePlayer.location = commit.payload.name;
           io.to(commit.payload.name).emit("commit", {
             event: "newUser",
             payload: statePlayer,
@@ -148,11 +190,26 @@ export default function game(io) {
 
           return;
         }
+        case "takenObj": {
+          let list = locations[statePlayer.location].objects;
+          const obj = _.find(list, {
+            id: commit.payload.obj.id,
+          });
+
+          if (obj) {
+            locations[statePlayer.location].objects = _.filter(
+              list,
+              (o) => o.id != commit.payload.obj.id
+            );
+          }
+
+          break;
+        }
       }
-      if (commit.event == "hit") return;
-      socket.broadcast.emit("commit", {
+
+      socket.broadcast.to(statePlayer.location).emit("commit", {
         event: commit.event,
-        payload: commit.payload,
+        payload: { ...commit.payload, location },
       });
     });
     socket.on("disconnect", () => {

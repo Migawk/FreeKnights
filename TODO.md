@@ -5,7 +5,7 @@
   - [x] Objects
   - [x] Doors
 - [x] Infobox
-- [ ] Inventory
+- [x] Inventory
 - [x] NPC
   - [x] NPC with dialogues
 
@@ -14,9 +14,9 @@
 - [ ] Classes.
 - [ ] Perks.
 - [ ] Passive skills tree.
-- [ ] Loot from players & npcs.
+- [x] Loot from players & npcs.
 - [ ] Enemies, friends and global chat.
-- [ ] Interaction cloud.
+- [x] Interaction cloud.
 - [ ] Effects
 - - Speed
 - - Slow

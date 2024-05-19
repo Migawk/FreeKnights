@@ -14,8 +14,8 @@ locations.set("valley", {
 });
 
 export default class Location {
-  constructor() {
-    this.currentLocation = locations.get("tovern");
+  constructor(initLocation) {
+    this.currentLocation = initLocation || locations.get("tovern");
     this.img = new Image();
     this.img.src = this.currentLocation.floor;
     this.objects = [];

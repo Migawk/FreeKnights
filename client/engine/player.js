@@ -20,6 +20,9 @@ export default class Player {
    * @param {string} name
    * @param {array} dialog
    * @param {"archer" | "knight" | "wizard" | "rogue"} character
+   * @param {number} hp
+   * @param {array} inventory
+   * @param {Map<String, Object>} effects
    */
   constructor(
     x,
@@ -32,7 +35,8 @@ export default class Player {
     dialog = null,
     character,
     hp,
-    inventory = []
+    inventory = [],
+    effects = new Map()
   ) {
     this.name = name;
     this.isBusy = false;
@@ -57,13 +61,14 @@ export default class Player {
 
     this.arrows = [];
     this.messages = [];
+    this.abilities = [];
+    this.effects = effects;
     this.inventory = inventory;
     if (this.inventory.length) {
       this.selectedItem = 0;
     } else {
       this.selectedItem = null;
     }
-    this.abilities = [];
 
     this.img = new Image();
     this.img.src = "./assets/archer.png";
@@ -123,6 +128,34 @@ export default class Player {
     } else {
       this.aiming = false;
     }
+
+    /** Effects **/
+    this.control == "hero" && console.log(this.effects);
+    if (this.effects.has("regen")) {
+      let { quant, time } = this.effects.get("regen");
+      this.hp += quant;
+
+      if (time.toFixed(1) <= 0) return this.effects.delete("regen");
+
+      this.effects.set("regen", { quant, time: (time -= 0.1) });
+    }
+    if (this.effects.has("stamina")) {
+      let { quant, time } = this.effects.get("stamina");
+      this.stamina += quant;
+
+      if (time.toFixed(1) <= 0) return this.effects.delete("stamina");
+
+      this.effects.set("stamina", { quant, time: (time -= 0.1) });
+    }
+    if (this.effects.has("acceleration")) {
+      let { quant, time } = this.effects.get("acceleration");
+      this.acceleration += quant;
+
+      if (time.toFixed(1) <= 0) return this.effects.delete("acceleration");
+
+      this.effects.set("acceleration", { quant, time: (time -= 0.1) });
+    }
+
     this.draw();
     this.move();
   }
@@ -180,11 +213,11 @@ export default class Player {
       }
     }
 
-    this.stamina < 200 ? (this.stamina += 1) : null;
+    this.stamina < 200 ? (this.stamina += 4) : null;
 
     if (keys.has("shift") && keys.size > 1 && this.stamina > 0) {
       this.stamina -= 5;
-      this.acceleration += 1; // FIX IT
+      this.acceleration += 1.5;
     }
     if (this.stamina < 1) {
       keys.delete("shift");

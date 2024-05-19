@@ -109,13 +109,14 @@ export function generateUID() {
 export class CommitActions {
   constructor(gameEntity, hero) {
     this.gameEntity = gameEntity;
+    this.location = gameEntity.location;
     this.heroEntity = hero;
   }
   newUser(user) {
     const newUser = new Player(
       user.x,
       user.y,
-      "player",
+      user.control,
       undefined,
       undefined,
       undefined,
@@ -134,7 +135,7 @@ export class CommitActions {
   }
   movement(user) {
     const thePlayer = this.gameEntity.players.find((p) => p.name === user.name);
-    if (!thePlayer) return;
+    if (!thePlayer || thePlayer.name == this.gameEntity.players[0].name) return;
     thePlayer.move(user.x, user.y);
     thePlayer.isRight = user.isRight;
     thePlayer.angleDirection = user.angleDirection;
@@ -198,7 +199,7 @@ export class CommitActions {
     };
     document.addEventListener("keydown", listener);
   }
-  hit(arrow, player) {
+  hit(location, player) {
     if (this.gameEntity.players[0].name === player.name) {
       socket.disconnect();
       return;
@@ -207,11 +208,7 @@ export class CommitActions {
     this.gameEntity.players = this.gameEntity.players.filter(
       (player1) => player1.name != player.name
     );
-  }
-  changeLocation(players, objects) {
-    this.userList(players);
-    
-    this.gameEntity.location.objects = objects.map(
+    this.location.objects = location.objects.map(
       (obj) =>
         new LocationObject(
           obj.x,
@@ -219,8 +216,30 @@ export class CommitActions {
           obj.width,
           obj.height,
           obj.img,
-          obj.interaction
+          obj.interaction,
+          obj.id
         )
     );
+  }
+  changeLocation(players, objects) {
+    this.userList(players);
+
+    this.location.objects = objects.map(
+      (obj) =>
+        new LocationObject(
+          obj.x,
+          obj.y,
+          obj.width,
+          obj.height,
+          obj.img,
+          obj.interaction,
+          obj.id
+        )
+    );
+  }
+  takenObj(obj) {
+    const list = this.location.objects;
+
+    list = list.filter((obj1) => obj1.id !== obj.id);
   }
 }

@@ -8,6 +8,7 @@ import {
   padding,
 } from "../engine/utils.js";
 import LocationObject from "../engine/object.js";
+import Game from "../engine/game.js";
 
 const form = document.getElementById("form");
 const canvas = document.createElement("canvas");
@@ -15,19 +16,8 @@ canvas.width = 600;
 canvas.height = 400;
 canvas.id = "canvas";
 
-const interaction = new Image(20, 20);
-interaction.src = "../assets/interaction.png";
-
-const poison = new Image();
-poison.src = "../assets/poison1.png";
-
-const imgs = {
-  "interaction.png": interaction,
-  "poison.png": poison,
-};
-
 export const ctx = canvas.getContext("2d");
-const crosshair = new Image();
+export const crosshair = new Image();
 crosshair.src = "./assets/crosshair.png";
 const { x: canvasX, y: canvasY } = canvas.getBoundingClientRect();
 export const pointer = {
@@ -74,187 +64,6 @@ if (form) {
 
     start(form.name.value, selected);
   });
-}
-
-class Game {
-  message = null;
-
-  constructor(players, locationEntity) {
-    this.players = players;
-    this.location = locationEntity;
-  }
-  updatePlayers(players) {
-    this.players = players;
-  }
-  update() {
-    const player = this.players[0];
-    ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    this.location.update();
-
-    this.players.forEach((player) => {
-      player.update();
-    });
-    player.arrows.forEach((arrow) => {
-      this.players.slice(1).forEach((player) => {
-        const col = collision(arrow, player);
-        if (col.isTouch) {
-          this.players[0].arrows = this.players[0].arrows.filter(
-            (arrow1) => arrow != arrow1
-          );
-          socket.emit("commit", {
-            event: "hit",
-            payload: {
-              arrow,
-              player,
-            },
-          });
-        }
-      });
-    });
-
-    if (keys.has("aim")) {
-      ctx.drawImage(crosshair, pointer.x + 16, pointer.y + 16);
-
-      ctx.strokeStyle = "red";
-      ctx.strokeWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(player.x, player.y);
-      ctx.lineTo(pointer.x + crosshair.width, pointer.y + crosshair.width);
-      ctx.stroke();
-      ctx.fill();
-    }
-
-    ctx.fillStyle = "#3c1003ee";
-    ctx.font = "bold 24px Arial";
-
-    const locationName =
-      this.location.currentLocation.name.slice(0, 1).toUpperCase() +
-      this.location.currentLocation.name.slice(1);
-    const { width: nameWidth } = ctx.measureText(locationName);
-    ctx.fillText(locationName, canvas.width - nameWidth - 8, 8 + 16);
-    if (this.message) {
-      ctx.fillRect(4, 400 - 60 - 4, 600 - 8, 60);
-      ctx.fillStyle = "#ccccccee";
-      ctx.font = "bold 16px Arial";
-      ctx.fillText(this.message.text, 16, 400 - 60 + 20);
-    }
-
-    ctx.fillStyle = "#3c1003bb";
-
-    if (!player.isBusy) {
-      // When the player is duscussing something.
-      const length = 140;
-
-      /** Panel **/
-      ctx.save();
-      ctx.translate(0, 400);
-      ctx.fillRect(padding, -54, 150, 50);
-      ctx.translate(padding, -54);
-      const hp = player.hp > length ? length : player.hp < 0 ? 0 : player.hp;
-      const stamina =
-        player.stamina > length
-          ? length
-          : player.stamina < 0
-          ? 0
-          : player.stamina;
-
-      ctx.fillStyle = "#0a7326bb";
-      ctx.fillRect(padding, padding, hp, 20);
-      ctx.fillStyle = "#260a73bb";
-      ctx.fillRect(padding, 26, stamina, 20);
-      ctx.restore();
-
-      /** Inventory **/
-      ctx.save();
-      ctx.translate(0, canvas.height - 30);
-      ctx.translate(padding + 150 + padding, 0);
-      if (player.inventory.length > 0) {
-        if (!player.inventory.selectedItem) player.inventory.selectedItem = 0;
-
-        for (let i = 0; i <= player.inventory.length; i++) {
-          if (player.inventory[i]) {
-            if (player.inventory.selectedItem === i) {
-              ctx.fillStyle = "#263c03bb";
-            } else {
-              ctx.fillStyle = "#3c1003bb";
-            }
-            ctx.fillRect(padding, 0 - padding, 30, 30);
-
-            ctx.drawImage(
-              imgs[player.inventory[i].img],
-              padding * 3,
-              padding,
-              32 - padding * 4,
-              32 - padding * 4
-            );
-            ctx.translate(30 + padding, 0);
-          }
-        }
-      }
-      ctx.restore();
-
-      /** Abilities */
-      ctx.save();
-      ctx.translate(canvas.width - 40, canvas.height - 40);
-      for (let i = 0; i <= player.abilities.length; i++) {
-        ctx.fillRect(-padding, 0 - padding, 40, 40);
-        ctx.translate(-40 - padding, 0);
-      }
-      ctx.restore();
-    }
-
-    let objectUnderCloud = { obj: null, dist: null };
-    this.players.forEach((player1, ind) => {
-      if (ind === 0) return;
-      collision(this.players[0], player1);
-      if (!player.isBusy) {
-        const dist = distance(player.x, player.y, player1.x, player1.y);
-        if (dist < 30) {
-          if (objectUnderCloud.obj) {
-            if (dist < objectUnderCloud.dist) {
-              objectUnderCloud = { obj: player1, dist };
-            }
-          } else {
-            objectUnderCloud = { obj: player1, dist };
-          }
-        }
-      }
-    });
-    this.location.objects.forEach((obj) => {
-      collision(player, obj);
-      if (!player.isBusy) {
-        const dist = distance(player.x, player.y, obj.x, obj.y);
-        if (dist < 30) {
-          if (objectUnderCloud.obj) {
-            if (dist < objectUnderCloud.dist) {
-              objectUnderCloud = { obj, dist };
-            }
-          } else objectUnderCloud = { obj, dist };
-        }
-      }
-    });
-    if (objectUnderCloud.obj) {
-      ctx.save();
-      const x = objectUnderCloud.obj.x + objectUnderCloud.obj.width / 2;
-      const y = objectUnderCloud.obj.y - objectUnderCloud.obj.height / 2;
-      ctx.translate(x, y);
-      ctx.scale(0.5, 0.5);
-      ctx.beginPath();
-      ctx.arc(-4, -34, 20, 0, 2 * Math.PI);
-      ctx.fill();
-      ctx.stroke();
-      ctx.drawImage(interaction, -16, -48);
-      ctx.restore();
-    }
-
-    if (keys.has("aim") && keys.has("shoot")) {
-      keys.delete("shoot");
-      const arrow = player.attack.shoot(pointer);
-      socket.emit("commit", { event: "newBullet", payload: arrow });
-    }
-  }
 }
 
 start("Migawka", "archer"); // uses only for tests
@@ -322,18 +131,12 @@ function start(name, character) {
         message.focus();
         break;
       }
-      case "l": {
-        if (locationEntity.currentLocation.name === "valley") {
-          locationEntity.change("tovern");
-        } else locationEntity.change("valley");
-        break;
-      }
       case "e": {
         let selectedObj;
         let closestPlayer;
 
-        if (game.location.objects.length > 0) {
-          for (let i = 0; i <= game.location.objects.length; i++) {
+        if (game.location.objects.length) {
+          for (let i = 0; i <= game.location.objects.length - 1; i++) {
             const obj = game.location.objects[i];
 
             const { isTouch } = collision(hero, obj);
@@ -350,14 +153,27 @@ function start(name, character) {
           const [type, value] = selectedObj.interaction;
           switch (type) {
             case "changeLocation": {
-              locationEntity.change(value);
+              const { x, y } = value.coords;
+              locationEntity.change(value.location);
+
+              hero.move(x, y);
               break;
             }
             case "item": {
               hero.inventory.push(value);
+              let list = locationEntity.objects;
+
+              locationEntity.objects = list.filter(
+                (obj1) => obj1.id !== selectedObj.id
+              );
               break;
             }
           }
+          if (!hero.selectedItem) hero.selectedItem = 0;
+          socket.emit("commit", {
+            event: "takenObj",
+            payload: { obj: selectedObj, player: hero.name },
+          });
           return;
         }
 
@@ -375,6 +191,32 @@ function start(name, character) {
           actions.displayDialog(closestPlayer.player.dialog);
           hero.isBusy = true;
         }
+        break;
+      }
+      case "r": {
+        if (hero.inventory.length == 0) return;
+        const item = hero.inventory[hero.selectedItem];
+
+        switch (item.interaction) {
+          case "heal": {
+            if (hero.effects.has("regen")) {
+              const regen = hero.effects.get("regen");
+              hero.effects.set("regen", { ...regen, time: (regen.time += 5) });
+            }
+            hero.effects.set("regen", { quant: 1, time: 5 });
+            break;
+          }
+          case "stamina": {
+            if (hero.effects.has("stamina")) {
+              const stamina = hero.effects.get("stamina");
+              hero.effects.set("stamina", { ...stamina, time: (stamina.time += 5) });
+            }
+            hero.effects.set("stamina", { quant: 1, time: 5 });
+            break;
+          }
+        }
+        hero.inventory = hero.inventory.filter((item1) => item != item1);
+        if (hero.inventory.length == 0) hero.selectedItem = null;
       }
     }
   });
@@ -395,6 +237,8 @@ function start(name, character) {
           obj.sliceY
         )
     );
+
+    locationEntity.change(res.location);
 
     if (Array.isArray(userList)) {
       const newList = [];
@@ -457,14 +301,20 @@ function start(name, character) {
         break;
       }
       case "hit": {
-        const { arrow, player } = commit.payload;
-        actions.hit(arrow, player);
+        const { player, location } = commit.payload;
+        actions.hit(location, player);
         break;
       }
       case "changeLocation": {
         const { players, objects } = commit.payload;
         actions.changeLocation(players, objects);
         return;
+      }
+      case "takenObj": {
+        const { obj, player } = commit.payload;
+        if (player == hero.name) return;
+        actions.takenObj(obj);
+        break;
       }
       default:
         break;
