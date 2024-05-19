@@ -130,7 +130,6 @@ export default class Player {
     }
 
     /** Effects **/
-    this.control == "hero" && console.log(this.effects);
     if (this.effects.has("regen")) {
       let { quant, time } = this.effects.get("regen");
       this.hp += quant;
@@ -158,14 +157,6 @@ export default class Player {
 
     this.draw();
     this.move();
-  }
-  move(x, y) {
-    if (x && y) {
-      this.x = x;
-      this.y = y;
-      return;
-    }
-    if (this.control != "hero") return;
 
     if (this.acceleration != 0) {
       if (this.acceleration < 0) {
@@ -179,6 +170,15 @@ export default class Player {
       this.vy *= this.friction;
       this.acceleration *= this.friction;
     }
+  }
+  move(x, y) {
+    if (x && y) {
+      this.x = x;
+      this.y = y;
+      return;
+    }
+    if (this.control != "hero") return;
+
     if (Math.abs(this.vx) >= this.limit) {
       if (this.vx < 0) this.vx = -this.limit;
       else this.vx = this.limit;

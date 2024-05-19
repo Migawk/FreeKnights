@@ -18,7 +18,7 @@ export const imgs = {
   "poison.png": poison,
   "poison2.png": poison2,
   "poison3.png": poison3,
-  "poison4.png": poison4
+  "poison4.png": poison4,
 };
 
 export default class Game {
@@ -71,7 +71,7 @@ export default class Game {
       ctx.stroke();
       ctx.fill();
 
-      player.stamina -= .8;
+      player.stamina -= 0.8;
     }
     if (keys.has("aim") && keys.has("shoot") && player.stamina > 10) {
       player.stamina -= 10;
@@ -103,9 +103,9 @@ export default class Game {
 
       /** Panel **/
       ctx.save();
-      ctx.translate(0, 400);
-      ctx.fillRect(padding, -54, 150, 50);
-      ctx.translate(padding, -54);
+      ctx.translate(0, 346);
+      ctx.fillRect(padding, 0, 150, 50);
+      ctx.translate(padding, 0);
       const hp = player.hp > length ? length : player.hp < 0 ? 0 : player.hp;
       const stamina =
         player.stamina > length
@@ -125,11 +125,11 @@ export default class Game {
       ctx.translate(0, canvas.height - 30);
       ctx.translate(padding + 150 + padding, 0);
       if (player.inventory.length > 0) {
-        if (!player.inventory.selectedItem) player.inventory.selectedItem = 0;
+        if (!player.selectedItem) player.selectedItem = 0;
 
         for (let i = 0; i <= player.inventory.length; i++) {
           if (player.inventory[i]) {
-            if (player.inventory.selectedItem === i) {
+            if (player.selectedItem === i) {
               ctx.fillStyle = "#263c03bb";
             } else {
               ctx.fillStyle = "#3c1003bb";
@@ -143,6 +143,9 @@ export default class Game {
               32 - padding * 4,
               32 - padding * 4
             );
+            ctx.fillStyle = "#620606";
+            ctx.font = "bold 16px Arial";
+            ctx.fillText(i+1, 15, 30);
             ctx.translate(30 + padding, 0);
           }
         }
@@ -156,6 +159,57 @@ export default class Game {
         ctx.fillRect(-padding, 0 - padding, 40, 40);
         ctx.translate(-40 - padding, 0);
       }
+      ctx.restore();
+    }
+    if (player.effects.size > 0) {
+      ctx.save();
+      ctx.translate(padding, padding);
+
+      player.effects.forEach((_, effect) => {
+        ctx.fillStyle = "#3c1003bb";
+        ctx.fillRect(0, 0, padding * 6, padding * 6);
+        ctx.beginPath();
+
+        switch (effect) {
+          case "regen": {
+            ctx.strokeStyle = "#0a7326bb";
+            ctx.lineWidth = 4;
+
+            ctx.moveTo(padding, padding * 3);
+            ctx.lineTo(padding * 5, padding * 3);
+            ctx.moveTo(padding * 3, padding);
+            ctx.lineTo(padding * 3, padding * 5);
+            ctx.stroke();
+            break;
+          }
+          case "stamina": {
+            ctx.strokeStyle = "#260a73";
+            ctx.lineWidth = 3;
+            ctx.moveTo(padding * 4, padding * 1);
+            ctx.lineTo(padding * 2, padding * 3);
+            ctx.lineTo(padding * 4, padding * 3);
+            ctx.lineTo(padding * 2, padding * 5);
+
+            ctx.stroke();
+            break;
+          }
+          case "acceleration": {
+            ctx.strokeStyle = "red";
+            ctx.lineWidth = 3;
+            
+            ctx.moveTo(padding*1.5, padding);
+            ctx.lineTo(padding*1.5, padding*5);
+            ctx.lineTo(padding*4.5, padding*5);
+            ctx.lineTo(padding*4.5, padding*3.5);
+            ctx.lineTo(padding*2.5, padding*3.5);
+            ctx.lineTo(padding*2.5, padding);
+            ctx.lineTo(padding*1.4, padding);
+            ctx.stroke();
+          }
+        }
+
+        ctx.translate(0, padding * 7);
+      });
       ctx.restore();
     }
 

@@ -92,9 +92,16 @@ function start(name, character) {
   const game = new Game([hero], locationEntity, hero);
   const actions = new CommitActions(game, hero);
 
+  hero.effects.set("stamina", { quant: 1, time: 5 });
+  hero.effects.set("regen", { quant: 1, time: 5 });
+  hero.effects.set("acceleration", { quant: 3, time: 5 });
+
   document.addEventListener("keydown", (e) => {
     if (hero.isBusy) return;
     switch (e.key) {
+      case "q": {
+        console.log(hero.inventory);
+      }
       case "Enter": {
         const messageStatus = document.getElementById("message");
 
@@ -166,14 +173,15 @@ function start(name, character) {
               locationEntity.objects = list.filter(
                 (obj1) => obj1.id !== selectedObj.id
               );
+              if (!hero.selectedItem) hero.selectedItem = 0;
+              console.log(type);
+              socket.emit("commit", {
+                event: "takenObj",
+                payload: { obj: selectedObj, player: hero.name },
+              });
               break;
             }
           }
-          if (!hero.selectedItem) hero.selectedItem = 0;
-          socket.emit("commit", {
-            event: "takenObj",
-            payload: { obj: selectedObj, player: hero.name },
-          });
           return;
         }
 
@@ -209,14 +217,37 @@ function start(name, character) {
           case "stamina": {
             if (hero.effects.has("stamina")) {
               const stamina = hero.effects.get("stamina");
-              hero.effects.set("stamina", { ...stamina, time: (stamina.time += 5) });
+              hero.effects.set("stamina", {
+                ...stamina,
+                time: (stamina.time += 5),
+              });
             }
             hero.effects.set("stamina", { quant: 1, time: 5 });
+            break;
+          }
+          case "acceleration": {
+            if (hero.effects.has("acceleration")) {
+              const acceleration = hero.effects.get("acceleration");
+              hero.effects.set("acceleration", {
+                ...acceleration,
+                time: (acceleration.time += 5),
+              });
+            }
+            hero.effects.set("acceleration", { quant: 1, time: 5 });
             break;
           }
         }
         hero.inventory = hero.inventory.filter((item1) => item != item1);
         if (hero.inventory.length == 0) hero.selectedItem = null;
+        break;
+      }
+      default: {
+        if (!isNaN(Number(e.key)) && e.key < 4 && e.key > 0) {
+          if (hero.inventory.length >= e.key-1) {
+            hero.selectedItem = e.key-1;
+            console.log(hero.selectedItem);
+          }
+        }
       }
     }
   });

@@ -17,7 +17,7 @@
 - [x] Loot from players & npcs.
 - [ ] Enemies, friends and global chat.
 - [x] Interaction cloud.
-- [ ] Effects
+- [x] Effects
 - - Speed
 - - Slow
 - - Quick-shoot
